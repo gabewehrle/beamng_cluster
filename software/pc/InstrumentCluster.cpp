@@ -1,10 +1,8 @@
-// InstrumentCluster.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
-
 #include <iostream>
 #include <type_traits>
 #include <bitset>
 #include <time.h>
+#include <string>
 #include <WS2tcpip.h>
 #include "Network.h"
 #include "SerialPort.hpp"
@@ -52,11 +50,25 @@ void calcPacketHash(unsigned char* data, dataPacket& packet);
 
 long getTime();
 
-const char* portName = "\\\\.\\COM4";
+std::string portName = "\\\\.\\COM";
 
 SerialPort* arduino;
 
-int main() {
+int main(int argc, char** argv) {
+	if (argc < 2) {
+		cerr << "COM port number must be specified!\n";
+		return 1;
+	}
+
+	try {
+		portName.append(argv[1]);
+		arduino = new SerialPort(portName.c_str());
+	}
+	catch (std::system_error& e) {
+		cerr << e.what();
+		return 1;
+	}
+
 	int PORT_RECV = 4444;
 
 	dataPacket clusterData;
@@ -110,8 +122,6 @@ int main() {
 		populateDataPacket(reinterpret_cast<unsigned char*>(bufferRecv), clusterData);
 
 		SocketRecv.Bind(PORT_RECV);
-
-		arduino = new SerialPort(portName);
 
 		while (true) {
 			sockaddr_in addressIn = SocketRecv.RecvFrom(bufferRecv, sizeof(bufferRecv));
@@ -229,10 +239,6 @@ void printDataPacket(dataPacket& packet, int y) {
 	cout << "\n\n";
 
 	int rpm = static_cast<int>(*packet.rpm);
-
-	byte rpmL = (rpm & 0xFF);
-	byte rpmH = ((rpm & ~0xFF) >> 8);
-	cout << "rpmL: '" << hex << +rpmL << "', rpmH: '" << hex << +rpmH << "'     \n";
 }
 
 long getTime() {
